@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lector de Especificaciones de Color</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f4f4f9; }
+        .container { display: flex; gap: 20px; }
+        .canvas-container { border: 1px solid #ccc; background: #fff; overflow: auto; max-width: 60%; }
+        .editor-container { flex: 1; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .row-item { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        .color-preview { width: 40px; height: 40px; border: 1px solid #000; }
+        input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%; }
+        .hex-input { width: 100px; font-family: monospace; }
+        button { padding: 10px 15px; background: #0056b3; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #004494; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+</head>
+<body>
+
+    <h2>Extractor de Colores y Textos</h2>
+    <input type="file" id="imageUpload" accept="image/*" style="margin-bottom: 20px;">
+
+    <div class="container">
+        <div class="canvas-container">
+            <canvas id="imgCanvas"></canvas>
+        </div>
+        
+        <div class="editor-container">
+            <h3>Revisión de Datos</h3>
+            <div id="dataRows">
+                </div>
+            <button id="exportBtn" style="display:none; margin-top: 20px; width: 100%;">Exportar a JSON</button>
+            <pre id="jsonOutput" style="background: #2d2d2d; color: #fff; padding: 10px; border-radius: 4px; display: none;"></pre>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
