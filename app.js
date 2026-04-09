@@ -1,3 +1,4 @@
+// 1. Declaración de variables y elementos del DOM
 const imageUpload = document.getElementById('imageUpload');
 const imgCanvas = document.getElementById('imgCanvas');
 const ctx = imgCanvas.getContext('2d');
@@ -5,15 +6,16 @@ const dataRows = document.getElementById('dataRows');
 const exportBtn = document.getElementById('exportBtn');
 const jsonOutput = document.getElementById('jsonOutput');
 
+// ¡Aquí está la variable global que marcaba el error!
 let currentImage = null;
 let extractedData = [];
 
-// Utilidad para convertir RGB a HEX
+// 2. Utilidad para convertir RGB a HEX
 function rgbToHex(r, g, b) {
     return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase();
 }
 
-// Cargar imagen en el Canvas
+// 3. Cargar imagen en el Canvas
 imageUpload.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -25,7 +27,10 @@ imageUpload.addEventListener('change', (e) => {
             imgCanvas.width = img.width;
             imgCanvas.height = img.height;
             ctx.drawImage(img, 0, 0);
-            currentImage = img;
+            
+            // Asignamos la imagen cargada a nuestra variable global
+            currentImage = img; 
+            
             dataRows.innerHTML = '<p>Haz clic en los cuadros de color en la imagen para extraer los datos.</p>';
         };
         img.src = event.target.result;
@@ -33,8 +38,9 @@ imageUpload.addEventListener('change', (e) => {
     reader.readAsDataURL(file);
 });
 
-// Extraer color al hacer clic
+// 4. Extraer color y texto al hacer clic (Código con recorte)
 imgCanvas.addEventListener('click', async (e) => {
+    // Si currentImage es null (no se ha cargado imagen), no hace nada
     if (!currentImage) return;
 
     // Obtener coordenadas del clic
@@ -50,11 +56,9 @@ imgCanvas.addEventListener('click', async (e) => {
     const tempId = Date.now();
     addUiRow(tempId, hexColor, "Analizando texto...");
 
-    // --- NUEVO ENFOQUE: Recortar la imagen con un Canvas temporal ---
-    
-    // Dimensiones del área de texto (Ajusta estos valores según tu tabla)
-    const scanWidth = 350;  // Ancho de la celda de texto
-    const scanHeight = 50;  // Alto aproximado de la fila
+    // Dimensiones del área de texto (Ajusta estos valores si la tabla es más ancha/angosta)
+    const scanWidth = 350;  
+    const scanHeight = 50;  
     
     // Crear un canvas invisible en memoria
     const tempCanvas = document.createElement('canvas');
@@ -62,31 +66,29 @@ imgCanvas.addEventListener('click', async (e) => {
     tempCanvas.height = scanHeight;
     const tempCtx = tempCanvas.getContext('2d');
 
-    // Calcular desde dónde recortar (Un poco a la derecha del clic, y centrado en Y)
-    const sourceX = x + 40; // Brincamos el cuadro de color
+    // Calcular desde dónde recortar (Brincamos el cuadro de color sumando 40px a X)
+    const sourceX = x + 40; 
     const sourceY = y - (scanHeight / 2);
 
     // Dibujar solo esa porción en el canvas temporal
     tempCtx.drawImage(
         imgCanvas, 
-        sourceX, sourceY, scanWidth, scanHeight, // Qué parte copiar (origen)
-        0, 0, scanWidth, scanHeight              // Dónde pegarlo (destino)
+        sourceX, sourceY, scanWidth, scanHeight, 
+        0, 0, scanWidth, scanHeight              
     );
 
-    // Convertir solo ese pequeño recorte a base64
     const croppedImageData = tempCanvas.toDataURL();
 
     // Ejecutar OCR EXCLUSIVAMENTE en el recorte
     try {
         const result = await Tesseract.recognize(
             croppedImageData,
-            'eng' // Puedes agregar configuraciones extra aquí si lo necesitas
+            'eng'
         );
         
-        // Limpiar el texto: quitar saltos de línea, barras verticales extrañas ('|', 'I') y espacios en blanco
         let cleanText = result.data.text
             .replace(/\n/g, ' ')
-            .replace(/[|I—_]/g, '') // Limpia caracteres basura comunes en bordes de tablas
+            .replace(/[|I—_]/g, '')
             .trim();
 
         updateUiRow(tempId, hexColor, cleanText);
@@ -97,7 +99,7 @@ imgCanvas.addEventListener('click', async (e) => {
     }
 });
 
-// Funciones para manejar la Interfaz de Usuario de los datos
+// 5. Funciones para manejar la Interfaz de Usuario
 function addUiRow(id, hex, initialText) {
     const row = document.createElement('div');
     row.className = 'row-item';
@@ -111,7 +113,6 @@ function addUiRow(id, hex, initialText) {
     dataRows.appendChild(row);
     exportBtn.style.display = 'block';
 
-    // Guardar en nuestro arreglo de datos
     extractedData.push({ id, hex, text: initialText });
     attachListeners();
 }
@@ -122,13 +123,11 @@ function updateUiRow(id, hex, text) {
         const textInput = row.querySelector('.text-input');
         textInput.value = text;
         
-        // Actualizar el arreglo de datos
         const dataItem = extractedData.find(item => item.id === id);
         if (dataItem) dataItem.text = text;
     }
 }
 
-// Mantener el JSON sincronizado con las ediciones manuales
 function attachListeners() {
     const inputs = document.querySelectorAll('#dataRows input');
     inputs.forEach(input => {
@@ -147,9 +146,8 @@ function attachListeners() {
     });
 }
 
-// Exportar datos
+// 6. Exportar datos a JSON
 exportBtn.addEventListener('click', () => {
-    // Limpiar el ID interno antes de exportar
     const finalData = extractedData.map(({ hex, text }) => ({ hex, colorName: text }));
     const jsonString = JSON.stringify(finalData, null, 4);
     
