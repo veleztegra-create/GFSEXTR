@@ -23,9 +23,11 @@
     <h2>Extractor de Colores y Textos</h2>
     <input type="file" id="imageUpload" accept="image/*" style="margin-bottom: 20px;">
 
-    <div class="container">
-        <div class="canvas-container">
-            <canvas id="imgCanvas"></canvas>
+   <div class="canvas-container">
+            <div id="statusBar" style="padding: 10px; background: #e9ecef; border-left: 4px solid #0056b3; margin-bottom: 0; font-weight: bold;">
+                Esperando imagen...
+            </div>
+            <canvas id="imgCanvas" style="cursor: crosshair;"></canvas>
         </div>
         
         <div class="editor-container">
