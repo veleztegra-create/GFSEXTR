@@ -83,6 +83,12 @@
             cursor: pointer;
             margin-top: 15px;
         }
+        /* Estilos para los badges de serigrafía */
+.badge { padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; }
+.base-true { background: #ffeaa7; color: #d35400; border: 1px solid #fab1a0; } /* Requiere base */
+.base-false { background: #55efc4; color: #00b894; } /* No requiere base */
+
+.db-btn { background: #0984e3; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 10px; }
         
         .btn-primary:hover { background: #55efc4; }
 
@@ -120,7 +126,9 @@
             <h3 style="margin-top:0;">Datos Extraídos</h3>
             <div id="dataRows">
                 </div>
-            
+<div id="dbControls" style="display:none;">
+    <button id="downloadDb" class="db-btn">📥 DESCARGAR BASE DE DATOS (.JSON)</button>
+</div>            
             <button id="exportBtn" class="btn-primary" style="display:none;">EXPORTAR A JSON</button>
             <pre id="jsonOutput" style="display:none;"></pre>
         </div>
