@@ -1,14 +1,20 @@
-// 1. Declaración de variables y elementos del DOM
+// 1. Declaración de variables
 const imageUpload = document.getElementById('imageUpload');
 const imgCanvas = document.getElementById('imgCanvas');
 const ctx = imgCanvas.getContext('2d');
 const dataRows = document.getElementById('dataRows');
 const exportBtn = document.getElementById('exportBtn');
 const jsonOutput = document.getElementById('jsonOutput');
+const statusBar = document.getElementById('statusBar'); // Nueva barra de estado
 
-// ¡Aquí está la variable global que marcaba el error!
 let currentImage = null;
 let extractedData = [];
+
+// Variables para la nueva herramienta de recorte
+let pendingColor = null; 
+let isDragging = false;
+let startX = 0;
+let startY = 0;
 
 // 2. Utilidad para convertir RGB a HEX
 function rgbToHex(r, g, b) {
@@ -28,78 +34,130 @@ imageUpload.addEventListener('change', (e) => {
             imgCanvas.height = img.height;
             ctx.drawImage(img, 0, 0);
             
-            // Asignamos la imagen cargada a nuestra variable global
             currentImage = img; 
+            pendingColor = null; // Reiniciar estado
             
-            dataRows.innerHTML = '<p>Haz clic en los cuadros de color en la imagen para extraer los datos.</p>';
+            statusBar.innerHTML = 'Paso 1: Haz <b>clic simple</b> en un cuadro de color.';
+            dataRows.innerHTML = '';
         };
         img.src = event.target.result;
     };
     reader.readAsDataURL(file);
 });
 
-// 4. Extraer color y texto al hacer clic (Código con recorte)
-imgCanvas.addEventListener('click', async (e) => {
-    // Si currentImage es null (no se ha cargado imagen), no hace nada
+// 4. Lógica de selección (Clic para color, Arrastrar para texto)
+
+// A. Cuando el usuario presiona el mouse
+imgCanvas.addEventListener('mousedown', (e) => {
+    if (!currentImage) return;
+    const rect = imgCanvas.getBoundingClientRect();
+    startX = e.clientX - rect.left;
+    startY = e.clientY - rect.top;
+    isDragging = false; 
+});
+
+// B. Cuando el usuario mueve el mouse presionado (Dibuja el cuadro guía)
+imgCanvas.addEventListener('mousemove', (e) => {
+    // Si el mouse no está presionado (botón 1), no hacer nada
+    if (!currentImage || e.buttons !== 1) return; 
+    
+    isDragging = true;
+    const rect = imgCanvas.getBoundingClientRect();
+    const currentX = e.clientX - rect.left;
+    const currentY = e.clientY - rect.top;
+
+    // Limpiar y redibujar la imagen base para que no se raye toda la pantalla
+    ctx.clearRect(0, 0, imgCanvas.width, imgCanvas.height);
+    ctx.drawImage(currentImage, 0, 0);
+
+    // Dibujar el rectángulo de selección azul semi-transparente
+    const width = currentX - startX;
+    const height = currentY - startY;
+    
+    ctx.strokeStyle = '#0056b3';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]); // Línea punteada
+    ctx.strokeRect(startX, startY, width, height);
+    
+    ctx.fillStyle = 'rgba(0, 86, 179, 0.2)';
+    ctx.fillRect(startX, startY, width, height);
+});
+
+// C. Cuando el usuario suelta el clic
+imgCanvas.addEventListener('mouseup', async (e) => {
     if (!currentImage) return;
 
-    // Obtener coordenadas del clic
     const rect = imgCanvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const endX = e.clientX - rect.left;
+    const endY = e.clientY - rect.top;
 
-    // Leer el píxel clickeado
-    const pixelData = ctx.getImageData(x, y, 1, 1).data;
-    const hexColor = rgbToHex(pixelData[0], pixelData[1], pixelData[2]);
+    // Redibujar la imagen limpia (quita el cuadro punteado)
+    ctx.clearRect(0, 0, imgCanvas.width, imgCanvas.height);
+    ctx.drawImage(currentImage, 0, 0);
+    ctx.setLineDash([]); // Quitar punteado
 
-    // Crear una entrada temporal en la UI
+    // CASO 1: Fue un clic simple (No arrastró) -> Extraer Color
+    if (!isDragging || (Math.abs(endX - startX) < 5 && Math.abs(endY - startY) < 5)) {
+        const pixelData = ctx.getImageData(startX, startY, 1, 1).data;
+        pendingColor = rgbToHex(pixelData[0], pixelData[1], pixelData[2]);
+        
+        // Actualizar barra de estado visualmente
+        statusBar.innerHTML = `Paso 2: Color <span style="display:inline-block; width:15px; height:15px; background-color:${pendingColor}; vertical-align:middle; border:1px solid #000; margin:0 5px;"></span> seleccionado. Ahora <b>haz clic y arrastra</b> sobre el texto correspondiente.`;
+        return; // Termina aquí y espera a que el usuario dibuje el cuadro
+    }
+
+    // CASO 2: Arrastró para seleccionar un área (Recortar y leer texto)
+    if (!pendingColor) {
+        alert("¡Cuidado! Primero debes hacer un clic simple en el color, y luego dibujar el cuadro del texto.");
+        return;
+    }
+
+    // Calcular dimensiones del recorte (Soporta arrastrar de abajo hacia arriba o derecha a izquierda)
+    const width = endX - startX;
+    const height = endY - startY;
+    const cropX = width > 0 ? startX : endX;
+    const cropY = height > 0 ? startY : endY;
+    const cropW = Math.abs(width);
+    const cropH = Math.abs(height);
+
+    // Preparar UI
     const tempId = Date.now();
-    addUiRow(tempId, hexColor, "Analizando texto...");
-
-    // Dimensiones del área de texto (Ajusta estos valores si la tabla es más ancha/angosta)
-    const scanWidth = 350;  
-    const scanHeight = 50;  
+    const activeColor = pendingColor; // Guardar el color actual para esta fila
+    pendingColor = null; // Reiniciar para la siguiente lectura
     
-    // Crear un canvas invisible en memoria
+    statusBar.innerHTML = 'Paso 1: Haz <b>clic simple</b> en el siguiente cuadro de color.';
+    addUiRow(tempId, activeColor, "Analizando área seleccionada...");
+
+    // Crear el recorte usando el Canvas temporal
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = scanWidth;
-    tempCanvas.height = scanHeight;
+    tempCanvas.width = cropW;
+    tempCanvas.height = cropH;
     const tempCtx = tempCanvas.getContext('2d');
-
-    // Calcular desde dónde recortar (Brincamos el cuadro de color sumando 40px a X)
-    const sourceX = x + 40; 
-    const sourceY = y - (scanHeight / 2);
-
-    // Dibujar solo esa porción en el canvas temporal
+    
     tempCtx.drawImage(
         imgCanvas, 
-        sourceX, sourceY, scanWidth, scanHeight, 
-        0, 0, scanWidth, scanHeight              
+        cropX, cropY, cropW, cropH, 
+        0, 0, cropW, cropH
     );
 
-    const croppedImageData = tempCanvas.toDataURL();
-
-    // Ejecutar OCR EXCLUSIVAMENTE en el recorte
+    // Mandar SOLO el recorte seleccionado a Tesseract
     try {
-        const result = await Tesseract.recognize(
-            croppedImageData,
-            'eng'
-        );
+        const result = await Tesseract.recognize(tempCanvas.toDataURL(), 'eng');
         
         let cleanText = result.data.text
             .replace(/\n/g, ' ')
             .replace(/[|I—_]/g, '')
             .trim();
 
-        updateUiRow(tempId, hexColor, cleanText);
+        updateUiRow(tempId, activeColor, cleanText);
 
     } catch (error) {
         console.error("Error en OCR:", error);
-        updateUiRow(tempId, hexColor, "Error al leer texto");
+        updateUiRow(tempId, activeColor, "Error al leer texto");
     }
 });
 
-// 5. Funciones para manejar la Interfaz de Usuario
+// 5. Funciones de Interfaz (Se mantienen igual)
 function addUiRow(id, hex, initialText) {
     const row = document.createElement('div');
     row.className = 'row-item';
@@ -122,7 +180,6 @@ function updateUiRow(id, hex, text) {
     if (row) {
         const textInput = row.querySelector('.text-input');
         textInput.value = text;
-        
         const dataItem = extractedData.find(item => item.id === id);
         if (dataItem) dataItem.text = text;
     }
@@ -135,7 +192,6 @@ function attachListeners() {
             const id = parseInt(e.target.dataset.id);
             const type = e.target.dataset.type;
             const dataItem = extractedData.find(item => item.id === id);
-            
             if (dataItem) {
                 dataItem[type] = e.target.value;
                 if (type === 'hex') {
@@ -149,8 +205,6 @@ function attachListeners() {
 // 6. Exportar datos a JSON
 exportBtn.addEventListener('click', () => {
     const finalData = extractedData.map(({ hex, text }) => ({ hex, colorName: text }));
-    const jsonString = JSON.stringify(finalData, null, 4);
-    
     jsonOutput.style.display = 'block';
-    jsonOutput.textContent = jsonString;
+    jsonOutput.textContent = JSON.stringify(finalData, null, 4);
 });
