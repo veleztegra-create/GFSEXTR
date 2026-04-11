@@ -11,16 +11,23 @@ let pendingColor = null;
 let isDragging = false;
 let startX = 0, startY = 0;
 
-// LÓGICA DE SERIGRAFÍA: Colores claros (White, Yellow, etc.) requieren base sobre prenda oscura
+// LÓGICA DE SERIGRAFÍA MEJORADA: 
+// Detecta mejor colores como el Rojo o Naranjas que necesitan base aunque no sean "blancos"
 function getSerigraphyAdvice(r, g, b) {
+    // 1. Calculamos el brillo percibido (estándar)
     const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    return brightness > 128; // TRUE si es claro (necesita base)
-}
+    
+    // 2. Calculamos la intensidad cromática (para captar rojos/vivos)
+    const maxColor = Math.max(r, g, b);
 
-function rgbToHex(r, g, b) {
-    return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase();
+    // REGLA: Si el brillo es alto O si el color es muy intenso (como un Rojo puro)
+    // El umbral de 100 es más sensible que 128, atrapando más colores.
+    if (brightness > 100 || maxColor > 180) {
+        return true; // REQUIERE BASE (Colores claros, pasteles y rojos vivos)
+    }
+    
+    return false; // NO REQUIERE BASE (Negros, Marinos, Forest muy oscuros)
 }
-
 imageUpload.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
