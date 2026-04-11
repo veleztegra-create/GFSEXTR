@@ -2,45 +2,50 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>GFSEXTR | Tegra Pro</title>
+    <title>GFSEXTR | Tegra Industrial</title>
     <style>
-        body { font-family: sans-serif; margin: 0; background: #f0f2f5; display: flex; flex-direction: column; height: 100vh; }
-        .header { background: #fff; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
-        .main { display: flex; flex: 1; overflow: hidden; gap: 10px; padding: 10px; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f4f4f9; display: flex; flex-direction: column; height: 100vh; }
+        .header { background: #fff; padding: 10px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd; }
+        .main { display: flex; flex: 1; overflow: hidden; padding: 15px; gap: 15px; }
         
-        .canvas-area { flex: 2; background: #fff; border-radius: 8px; display: flex; flex-direction: column; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        #statusBar { padding: 10px; background: #2d3436; color: #00cec9; font-weight: bold; }
-        .scroll-box { overflow: auto; flex: 1; }
+        .canvas-area { flex: 2; background: #fff; border-radius: 8px; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        #statusBar { padding: 12px; background: #2d3436; color: #00cec9; font-weight: bold; border-radius: 8px 8px 0 0; }
+        .scroll-box { overflow: auto; flex: 1; border: 1px solid #eee; }
         
-        .editor-area { flex: 1; background: #fff; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .row-item { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .editor-area { flex: 1; background: #fff; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .row-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
         
-        .color-preview { width: 24px; height: 24px; border-radius: 4px; border: 1px solid #ccc; flex-shrink: 0; }
-        .text-input { flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
-        .badge { font-size: 10px; padding: 4px 8px; border-radius: 4px; font-weight: bold; white-space: nowrap; }
+        .color-preview { width: 28px; height: 28px; border-radius: 4px; border: 1px solid #ddd; flex-shrink: 0; }
+        .text-input { flex: 1; padding: 8px; border: 1px solid #dfe6e9; border-radius: 4px; font-size: 14px; }
+        .text-input:focus { border-color: #0984e3; outline: none; }
+        
+        .badge { font-size: 11px; padding: 5px 10px; border-radius: 4px; font-weight: bold; }
         .base-true { background: #ffeaa7; color: #d35400; }
         .base-false { background: #55efc4; color: #00b894; }
         
-        .delete-btn { background: #ff7675; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
-        .download-btn { background: #0984e3; color: white; border: none; width: 100%; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .delete-btn { background: #fab1a0; color: #c0392b; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer; font-weight: bold; }
+        .delete-btn:hover { background: #ff7675; color: white; }
+        
+        .download-btn { background: #0984e3; color: white; border: none; width: 100%; padding: 14px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: auto; }
+        .download-btn:hover { background: #074b83; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 </head>
 <body>
     <div class="header">
-        <h3 style="margin:0">GFSEXTR</h3>
-        <input type="file" id="imageUpload" accept="image/*">
+        <h2 style="margin:0; color: #2d3436;">GFSEXTR <span style="font-weight:normal; font-size: 14px;">| Production Tool</span></h2>
+        <input type="file" id="imageUpload" accept="image/*" style="font-size: 14px;">
     </div>
     <div class="main">
         <div class="canvas-area">
-            <div id="statusBar">Sube una imagen para comenzar</div>
+            <div id="statusBar">Sube una especificación para iniciar</div>
             <div class="scroll-box"><canvas id="imgCanvas"></canvas></div>
         </div>
         <div class="editor-area">
-            <h4 style="margin:0 0 10px 0">Lista de Colores</h4>
-            <div id="dataRows" style="overflow:auto; flex:1"></div>
-            <div id="dbControls" style="display:none">
-                <button id="downloadDb" class="download-btn">📥 DESCARGAR JSON</button>
+            <h3 style="margin: 0 0 15px 0; color: #636e72;">Colores de la Orden</h3>
+            <div id="dataRows" style="overflow:auto; flex:1; padding-right: 5px;"></div>
+            <div id="dbControls" style="display:none; padding-top: 15px;">
+                <button id="downloadDb" class="download-btn">📥 GUARDAR BASE DE DATOS (.JSON)</button>
             </div>
         </div>
     </div>
