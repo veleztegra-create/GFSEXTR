@@ -11,23 +11,26 @@ let pendingColor = null;
 let isDragging = false;
 let startX = 0, startY = 0;
 
+// 1. UTILIDADES DE COLOR
+function rgbToHex(r, g, b) {
+    return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase();
+}
+
 // LÓGICA DE SERIGRAFÍA MEJORADA: 
-// Detecta mejor colores como el Rojo o Naranjas que necesitan base aunque no sean "blancos"
+// Detecta Colores Claros Y Colores Intensos (Rojos/Naranjas) que necesitan base.
 function getSerigraphyAdvice(r, g, b) {
-    // 1. Calculamos el brillo percibido (estándar)
     const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    
-    // 2. Calculamos la intensidad cromática (para captar rojos/vivos)
     const maxColor = Math.max(r, g, b);
 
-    // REGLA: Si el brillo es alto O si el color es muy intenso (como un Rojo puro)
-    // El umbral de 100 es más sensible que 128, atrapando más colores.
+    // Si el brillo es alto (blancos/pasteles) O si un canal es muy fuerte (Rojos vivos)
+    // El umbral de 100 y 180 asegura que el Rojo UNIRED entre como "CON BASE"
     if (brightness > 100 || maxColor > 180) {
-        return true; // REQUIERE BASE (Colores claros, pasteles y rojos vivos)
+        return true; 
     }
-    
-    return false; // NO REQUIERE BASE (Negros, Marinos, Forest muy oscuros)
+    return false; 
 }
+
+// 2. CARGA DE IMAGEN
 imageUpload.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -46,10 +49,10 @@ imageUpload.addEventListener('change', (e) => {
     reader.readAsDataURL(file);
 });
 
+// 3. EVENTOS DEL MOUSE (SELECCIÓN)
 imgCanvas.addEventListener('mousedown', (e) => {
     if (!currentImage) return;
     const rect = imgCanvas.getBoundingClientRect();
-    // Ajuste de escala para que el clic coincida con la resolución real de la imagen
     startX = (e.clientX - rect.left) * (imgCanvas.width / rect.width);
     startY = (e.clientY - rect.top) * (imgCanvas.height / rect.height);
     isDragging = false;
@@ -82,12 +85,13 @@ imgCanvas.addEventListener('mouseup', async (e) => {
         const pixel = ctx.getImageData(startX, startY, 1, 1).data;
         const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
         const needsBase = getSerigraphyAdvice(pixel[0], pixel[1], pixel[2]);
+        
         pendingColor = { hex, underbase: needsBase };
-        statusBar.innerHTML = `🎨 ${hex} | Base: ${needsBase ? 'SÍ' : 'NO'}. Selecciona el texto ahora.`;
+        statusBar.innerHTML = `🎨 ${hex} | Base: ${needsBase ? 'SÍ' : 'NO'}. Ahora selecciona el texto.`;
         return;
     }
 
-    // ARRASTRE: OCR y guardado
+    // ARRASTRAR: OCR y guardado
     if (!pendingColor) return;
     statusBar.innerHTML = "⌛ Leyendo texto...";
 
@@ -107,10 +111,11 @@ imgCanvas.addEventListener('mouseup', async (e) => {
         });
         renderDatabase();
         pendingColor = null;
-        statusBar.innerHTML = "✅ Guardado. Puedes continuar.";
+        statusBar.innerHTML = "✅ Guardado. Siguiente color.";
     } catch (err) { statusBar.innerHTML = "❌ Error en OCR"; }
 });
 
+// 4. GESTIÓN DE LA LISTA Y EDICIÓN
 function renderDatabase() {
     dataRows.innerHTML = database.map(item => `
         <div class="row-item">
@@ -120,10 +125,10 @@ function renderDatabase() {
             <button class="delete-btn" onclick="deleteItem(${item.id})">✕</button>
         </div>
     `).reverse().join('');
+    
     document.getElementById('dbControls').style.display = database.length ? 'block' : 'none';
 }
 
-// Funciones globales para edición y borrado
 window.updateText = (id, newText) => {
     const item = database.find(i => i.id === id);
     if (item) item.colorName = newText;
@@ -138,6 +143,6 @@ downloadDb.addEventListener('click', () => {
     const blob = new Blob([JSON.stringify(database, null, 4)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `spec_tegra_${new Date().getTime()}.json`;
+    a.download = `spec_colors_${new Date().getTime()}.json`;
     a.click();
 });
