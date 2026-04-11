@@ -2,101 +2,48 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GFSEXTR | Tegra Serigrafía</title>
+    <title>GFSEXTR | Tegra Pro</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f0f2f5; color: #1c1e21; margin: 0; }
-        .header { display: flex; align-items: center; justify-content: space-between; padding: 15px 30px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        body { font-family: sans-serif; margin: 0; background: #f0f2f5; display: flex; flex-direction: column; height: 100vh; }
+        .header { background: #fff; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
+        .main { display: flex; flex: 1; overflow: hidden; gap: 10px; padding: 10px; }
         
-        .main-layout { display: flex; gap: 20px; padding: 20px; align-items: flex-start; }
+        .canvas-area { flex: 2; background: #fff; border-radius: 8px; display: flex; flex-direction: column; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        #statusBar { padding: 10px; background: #2d3436; color: #00cec9; font-weight: bold; }
+        .scroll-box { overflow: auto; flex: 1; }
         
-        /* Visor de Imagen */
-        .canvas-wrapper { 
-            flex: 2; 
-            background: #fff; 
-            border-radius: 8px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            overflow: hidden;
-        }
+        .editor-area { flex: 1; background: #fff; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .row-item { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid #eee; }
         
-        #statusBar { 
-            padding: 15px; 
-            background: #2d3436; 
-            color: #00cec9; 
-            font-weight: bold;
-            border-bottom: 3px solid #0984e3;
-        }
-
-        .canvas-container { overflow: auto; max-height: 75vh; position: relative; }
-        #imgCanvas { cursor: crosshair; display: block; }
-
-        /* Panel de Control */
-        .editor-panel { 
-            flex: 1; 
-            background: #fff; 
-            padding: 20px; 
-            border-radius: 8px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            position: sticky;
-            top: 20px;
-        }
-
-        .row-item { 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            padding: 12px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .color-preview { width: 30px; height: 30px; border-radius: 50%; border: 1px solid #ddd; flex-shrink: 0; }
-        
-        /* Badges de Serigrafía */
-        .badge { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; white-space: nowrap; }
-        .base-true { background: #ffeaa7; color: #d35400; border: 1px solid #fab1a0; }
+        .color-preview { width: 24px; height: 24px; border-radius: 4px; border: 1px solid #ccc; flex-shrink: 0; }
+        .text-input { flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
+        .badge { font-size: 10px; padding: 4px 8px; border-radius: 4px; font-weight: bold; white-space: nowrap; }
+        .base-true { background: #ffeaa7; color: #d35400; }
         .base-false { background: #55efc4; color: #00b894; }
-
-        input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-        .text-input { flex-grow: 1; font-size: 13px; }
-
-        .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-download { background: #0984e3; color: white; margin-top: 15px; }
-        .btn-download:hover { background: #074b83; }
-
-        pre { background: #2d3436; color: #fab1a0; padding: 10px; border-radius: 4px; font-size: 11px; margin-top: 15px; max-height: 150px; overflow: auto; }
+        
+        .delete-btn { background: #ff7675; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
+        .download-btn { background: #0984e3; color: white; border: none; width: 100%; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 </head>
 <body>
-
     <div class="header">
-        <h2 style="margin:0; font-size:18px;">GFSEXTR <span style="font-weight:normal; color:#636e72;">| Producción Tegra</span></h2>
-        <label for="imageUpload" style="cursor:pointer; background:#0984e3; color:white; padding:8px 18px; border-radius:4px; font-weight:bold;">
-            📂 CARGAR SPEC
-        </label>
-        <input type="file" id="imageUpload" accept="image/*" style="display:none;">
+        <h3 style="margin:0">GFSEXTR</h3>
+        <input type="file" id="imageUpload" accept="image/*">
     </div>
-
-    <div class="main-layout">
-        <div class="canvas-wrapper">
-            <div id="statusBar">Esperando imagen...</div>
-            <div class="canvas-container">
-                <canvas id="imgCanvas"></canvas>
-            </div>
+    <div class="main">
+        <div class="canvas-area">
+            <div id="statusBar">Sube una imagen para comenzar</div>
+            <div class="scroll-box"><canvas id="imgCanvas"></canvas></div>
         </div>
-        
-        <div class="editor-panel">
-            <h3 style="margin-top:0;">Base de Datos de Color</h3>
-            <div id="dataRows" style="max-height: 50vh; overflow-y: auto;">
-                </div>
-            
-            <div id="dbControls" style="display:none;">
-                <button id="downloadDb" class="btn btn-download">📥 GUARDAR BASE DE DATOS (.JSON)</button>
-                <pre id="jsonPreview"></pre>
+        <div class="editor-area">
+            <h4 style="margin:0 0 10px 0">Lista de Colores</h4>
+            <div id="dataRows" style="overflow:auto; flex:1"></div>
+            <div id="dbControls" style="display:none">
+                <button id="downloadDb" class="download-btn">📥 DESCARGAR JSON</button>
             </div>
         </div>
     </div>
-
     <script src="app.js"></script>
 </body>
 </html>
