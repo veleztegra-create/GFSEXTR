@@ -11,12 +11,10 @@ let pendingColor = null;
 let isDragging = false;
 let startX = 0, startY = 0;
 
-// CORRECCIÓN: Lógica para Serigrafía (Colores claros necesitan base)
+// LÓGICA DE SERIGRAFÍA: Colores claros (White, Yellow, etc.) requieren base sobre prenda oscura
 function getSerigraphyAdvice(r, g, b) {
     const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    // Ahora: Si el color es CLARO (brillo > 128), REQUIERE BASE (true)
-    // Colores oscuros como Marino o Negro no suelen requerir base blanca sobre prenda oscura.
-    return brightness > 128; 
+    return brightness > 128; // TRUE si es claro (necesita base)
 }
 
 function rgbToHex(r, g, b) {
@@ -34,7 +32,7 @@ imageUpload.addEventListener('change', (e) => {
             imgCanvas.height = img.height;
             ctx.drawImage(img, 0, 0);
             currentImage = img;
-            statusBar.innerHTML = "🎯 1: Clic en Color | 2: Arrastra en Texto";
+            statusBar.innerHTML = "🎯 1: Clic en Color | 2: Arrastra sobre el Texto";
         };
         img.src = event.target.result;
     };
@@ -44,6 +42,7 @@ imageUpload.addEventListener('change', (e) => {
 imgCanvas.addEventListener('mousedown', (e) => {
     if (!currentImage) return;
     const rect = imgCanvas.getBoundingClientRect();
+    // Ajuste de escala para que el clic coincida con la resolución real de la imagen
     startX = (e.clientX - rect.left) * (imgCanvas.width / rect.width);
     startY = (e.clientY - rect.top) * (imgCanvas.height / rect.height);
     isDragging = false;
@@ -55,6 +54,7 @@ imgCanvas.addEventListener('mousemove', (e) => {
     const rect = imgCanvas.getBoundingClientRect();
     const curX = (e.clientX - rect.left) * (imgCanvas.width / rect.width);
     const curY = (e.clientY - rect.top) * (imgCanvas.height / rect.height);
+    
     ctx.clearRect(0, 0, imgCanvas.width, imgCanvas.height);
     ctx.drawImage(currentImage, 0, 0);
     ctx.strokeStyle = "#0984e3";
@@ -67,19 +67,22 @@ imgCanvas.addEventListener('mouseup', async (e) => {
     const rect = imgCanvas.getBoundingClientRect();
     const endX = (e.clientX - rect.left) * (imgCanvas.width / rect.width);
     const endY = (e.clientY - rect.top) * (imgCanvas.height / rect.height);
+
     ctx.drawImage(currentImage, 0, 0);
 
-    if (!isDragging) {
+    // CLIC SIMPLE: Captura de Color y Base
+    if (!isDragging || (Math.abs(endX - startX) < 5)) {
         const pixel = ctx.getImageData(startX, startY, 1, 1).data;
         const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
         const needsBase = getSerigraphyAdvice(pixel[0], pixel[1], pixel[2]);
         pendingColor = { hex, underbase: needsBase };
-        statusBar.innerHTML = `🎨 ${hex} | Base: ${needsBase ? 'SÍ' : 'NO'}. Ahora selecciona el texto.`;
+        statusBar.innerHTML = `🎨 ${hex} | Base: ${needsBase ? 'SÍ' : 'NO'}. Selecciona el texto ahora.`;
         return;
     }
 
+    // ARRASTRE: OCR y guardado
     if (!pendingColor) return;
-    statusBar.innerHTML = "⌛ Leyendo...";
+    statusBar.innerHTML = "⌛ Leyendo texto...";
 
     const cropX = Math.min(startX, endX), cropY = Math.min(startY, endY);
     const cropW = Math.abs(endX - startX), cropH = Math.abs(endY - startY);
@@ -97,12 +100,12 @@ imgCanvas.addEventListener('mouseup', async (e) => {
         });
         renderDatabase();
         pendingColor = null;
-        statusBar.innerHTML = "✅ Listo. Siguiente color.";
-    } catch (err) { statusBar.innerHTML = "❌ Error OCR"; }
+        statusBar.innerHTML = "✅ Guardado. Puedes continuar.";
+    } catch (err) { statusBar.innerHTML = "❌ Error en OCR"; }
 });
 
 function renderDatabase() {
-    dataRows.innerHTML = database.map((item, index) => `
+    dataRows.innerHTML = database.map(item => `
         <div class="row-item">
             <div class="color-preview" style="background-color: ${item.hex}"></div>
             <input type="text" class="text-input" value="${item.colorName}" oninput="updateText(${item.id}, this.value)">
@@ -113,7 +116,7 @@ function renderDatabase() {
     document.getElementById('dbControls').style.display = database.length ? 'block' : 'none';
 }
 
-// Funciones globales para interactuar con la lista
+// Funciones globales para edición y borrado
 window.updateText = (id, newText) => {
     const item = database.find(i => i.id === id);
     if (item) item.colorName = newText;
@@ -128,6 +131,6 @@ downloadDb.addEventListener('click', () => {
     const blob = new Blob([JSON.stringify(database, null, 4)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `spec_colors_${new Date().getTime()}.json`;
+    a.download = `spec_tegra_${new Date().getTime()}.json`;
     a.click();
 });
