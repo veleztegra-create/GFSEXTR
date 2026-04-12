@@ -4,6 +4,7 @@ const ctx = imgCanvas.getContext('2d');
 const dataRows = document.getElementById('dataRows');
 const statusBar = document.getElementById('statusBar');
 const downloadDb = document.getElementById('downloadDb');
+const thresholdInput = document.getElementById('palette-light-threshold');
 
 let currentImage = null;
 let database = []; 
@@ -12,53 +13,24 @@ let isDragging = false;
 let startX = 0, startY = 0;
 
 // 1. UTILIDADES DE COLOR
-// ... (variables iniciales iguales)
-const thresholdInput = document.getElementById('palette-light-threshold');
-
 function rgbToHex(r, g, b) {
     return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase();
 }
 
-// LÓGICA DE SERIGRAFÍA AJUSTABLE
+// LÓGICA DE SERIGRAFÍA DINÁMICA
 function getSerigraphyAdvice(r, g, b) {
-    // Calculamos el brillo percibido
     const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    
-    // Obtenemos el valor manual del input (por defecto 155)
-    const manualThreshold = parseInt(thresholdInput.value) || 155;
-
-    // Si el brillo del color es mayor al umbral, se considera claro -> Requiere Base
-    // También mantenemos el refuerzo para colores muy saturados (como el rojo vivo)
     const maxColor = Math.max(r, g, b);
     
+    // Si el input existe, toma su valor; si no, usa 155 por defecto
+    const manualThreshold = thresholdInput ? parseInt(thresholdInput.value) : 155;
+
+    // Si el brillo supera el umbral que definiste O es un color muy intenso (Rojos vivos)
     if (brightness > manualThreshold || maxColor > 200) {
-        return true; 
+        return true; // REQUIERE BASE
     }
-    return false; 
+    return false; // NO REQUIERE BASE
 }
-
-// El resto de los eventos (mousedown, mousemove, mouseup) se mantienen igual, 
-// ya que invocan a getSerigraphyAdvice internamente.
-
-imgCanvas.addEventListener('mouseup', async (e) => {
-    if (!currentImage) return;
-    const rect = imgCanvas.getBoundingClientRect();
-    const endX = (e.clientX - rect.left) * (imgCanvas.width / rect.width);
-    const endY = (e.clientY - rect.top) * (imgCanvas.height / rect.height);
-
-    ctx.drawImage(currentImage, 0, 0);
-
-    if (!isDragging || (Math.abs(endX - startX) < 5)) {
-        const pixel = ctx.getImageData(startX, startY, 1, 1).data;
-        const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
-        
-        // Aquí usa el valor actualizado del input
-        const needsBase = getSerigraphyAdvice(pixel[0], pixel[1], pixel[2]);
-        
-        pendingColor = { hex, underbase: needsBase };
-        statusBar.innerHTML = `🎨 ${hex} | Base: ${needsBase ? 'SÍ' : 'NO'}. Selecciona el texto.`;
-        return;
-    }
 
 // 2. CARGA DE IMAGEN
 imageUpload.addEventListener('change', (e) => {
@@ -79,7 +51,7 @@ imageUpload.addEventListener('change', (e) => {
     reader.readAsDataURL(file);
 });
 
-// 3. EVENTOS DEL MOUSE (SELECCIÓN)
+// 3. EVENTOS DEL MOUSE (AQUÍ ESTABA EL ERROR DE LA LLAVE)
 imgCanvas.addEventListener('mousedown', (e) => {
     if (!currentImage) return;
     const rect = imgCanvas.getBoundingClientRect();
@@ -110,7 +82,7 @@ imgCanvas.addEventListener('mouseup', async (e) => {
 
     ctx.drawImage(currentImage, 0, 0);
 
-    // CLIC SIMPLE: Captura de Color y Base
+    // CLIC SIMPLE: Captura de Color y evalúa Umbral
     if (!isDragging || (Math.abs(endX - startX) < 5)) {
         const pixel = ctx.getImageData(startX, startY, 1, 1).data;
         const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
@@ -121,9 +93,9 @@ imgCanvas.addEventListener('mouseup', async (e) => {
         return;
     }
 
-    // ARRASTRAR: OCR y guardado
+    // ARRASTRE: OCR y Guardado
     if (!pendingColor) return;
-    statusBar.innerHTML = "⌛ Leyendo texto...";
+    statusBar.innerHTML = "⌛ Leyendo texto con OCR...";
 
     const cropX = Math.min(startX, endX), cropY = Math.min(startY, endY);
     const cropW = Math.abs(endX - startX), cropH = Math.abs(endY - startY);
@@ -141,9 +113,12 @@ imgCanvas.addEventListener('mouseup', async (e) => {
         });
         renderDatabase();
         pendingColor = null;
-        statusBar.innerHTML = "✅ Guardado. Siguiente color.";
-    } catch (err) { statusBar.innerHTML = "❌ Error en OCR"; }
-});
+        statusBar.innerHTML = "✅ Guardado. Selecciona el siguiente color.";
+    } catch (err) { 
+        console.error(err);
+        statusBar.innerHTML = "❌ Error en OCR"; 
+    }
+}); // <-- ESTA ES LA LLAVE QUE FALTABA
 
 // 4. GESTIÓN DE LA LISTA Y EDICIÓN
 function renderDatabase() {
@@ -156,7 +131,8 @@ function renderDatabase() {
         </div>
     `).reverse().join('');
     
-    document.getElementById('dbControls').style.display = database.length ? 'block' : 'none';
+    const dbControls = document.getElementById('dbControls');
+    if(dbControls) dbControls.style.display = database.length ? 'block' : 'none';
 }
 
 window.updateText = (id, newText) => {
@@ -169,10 +145,12 @@ window.deleteItem = (id) => {
     renderDatabase();
 };
 
-downloadDb.addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(database, null, 4)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `spec_colors_${new Date().getTime()}.json`;
-    a.click();
-});
+if(downloadDb) {
+    downloadDb.addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(database, null, 4)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `spec_colors_${new Date().getTime()}.json`;
+        a.click();
+    });
+}
