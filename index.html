@@ -47,6 +47,16 @@
             <div id="dbControls" style="display:none; padding-top: 15px;">
                 <button id="downloadDb" class="download-btn">📥 GUARDAR BASE DE DATOS (.JSON)</button>
             </div>
+            <div style="background: #f1f2f6; padding: 10px; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid #0984e3;">
+    <label style="font-size: 12px; font-weight: bold; color: #2d3436; display: block; margin-bottom: 5px;">
+        ⚙️ UMBRAL DE BASE (0-255):
+    </label>
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <input type="number" id="palette-light-threshold" class="form-control" min="0" max="255" value="155" 
+               style="width: 70px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
+        <span style="font-size: 11px; color: #636e72;">↑ Claro (SÍ Base) | ↓ Oscuro (NO Base)</span>
+    </div>
+</div>
         </div>
     </div>
     <script src="app.js"></script>
