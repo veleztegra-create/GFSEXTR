@@ -12,23 +12,53 @@ let isDragging = false;
 let startX = 0, startY = 0;
 
 // 1. UTILIDADES DE COLOR
+// ... (variables iniciales iguales)
+const thresholdInput = document.getElementById('palette-light-threshold');
+
 function rgbToHex(r, g, b) {
     return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase();
 }
 
-// LÓGICA DE SERIGRAFÍA MEJORADA: 
-// Detecta Colores Claros Y Colores Intensos (Rojos/Naranjas) que necesitan base.
+// LÓGICA DE SERIGRAFÍA AJUSTABLE
 function getSerigraphyAdvice(r, g, b) {
+    // Calculamos el brillo percibido
     const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    const maxColor = Math.max(r, g, b);
+    
+    // Obtenemos el valor manual del input (por defecto 155)
+    const manualThreshold = parseInt(thresholdInput.value) || 155;
 
-    // Si el brillo es alto (blancos/pasteles) O si un canal es muy fuerte (Rojos vivos)
-    // El umbral de 100 y 180 asegura que el Rojo UNIRED entre como "CON BASE"
-    if (brightness > 100 || maxColor > 180) {
+    // Si el brillo del color es mayor al umbral, se considera claro -> Requiere Base
+    // También mantenemos el refuerzo para colores muy saturados (como el rojo vivo)
+    const maxColor = Math.max(r, g, b);
+    
+    if (brightness > manualThreshold || maxColor > 200) {
         return true; 
     }
     return false; 
 }
+
+// El resto de los eventos (mousedown, mousemove, mouseup) se mantienen igual, 
+// ya que invocan a getSerigraphyAdvice internamente.
+
+imgCanvas.addEventListener('mouseup', async (e) => {
+    if (!currentImage) return;
+    const rect = imgCanvas.getBoundingClientRect();
+    const endX = (e.clientX - rect.left) * (imgCanvas.width / rect.width);
+    const endY = (e.clientY - rect.top) * (imgCanvas.height / rect.height);
+
+    ctx.drawImage(currentImage, 0, 0);
+
+    if (!isDragging || (Math.abs(endX - startX) < 5)) {
+        const pixel = ctx.getImageData(startX, startY, 1, 1).data;
+        const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+        
+        // Aquí usa el valor actualizado del input
+        const needsBase = getSerigraphyAdvice(pixel[0], pixel[1], pixel[2]);
+        
+        pendingColor = { hex, underbase: needsBase };
+        statusBar.innerHTML = `🎨 ${hex} | Base: ${needsBase ? 'SÍ' : 'NO'}. Selecciona el texto.`;
+        return;
+    }
 
 // 2. CARGA DE IMAGEN
 imageUpload.addEventListener('change', (e) => {
