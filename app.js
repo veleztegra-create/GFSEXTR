@@ -59,12 +59,16 @@ function activePalette(){ return state.palettes.find(p=>p.id===state.activePalet
 
 function getSerigraphyAdvice(r,g,b){
   const brightness=(r*299+g*587+b*114)/1000;
-  const manualThreshold=thresholdInput ? Math.max(0,Math.min(255,parseInt(thresholdInput.value,10) || 155)) : 155;
+  const manualThreshold=thresholdInput
+    ? Math.max(0,Math.min(255,parseInt(thresholdInput.value,10) || 155))
+    : 155;
+  const maxColor=Math.max(r,g,b);
 
-  // En serigrafía sobre prenda oscura:
-  // colores por debajo del umbral -> CON BASE
-  // colores por encima del umbral -> SIN BASE
-  return brightness < manualThreshold;
+  // Criterio V2AUT:
+  // colores que superan el umbral -> CON BASE
+  // colores por debajo del umbral -> SIN BASE
+  // Un canal muy alto también fuerza base.
+  return brightness > manualThreshold || maxColor > 200;
 }
 function rgbToHex(r,g,b){ return '#'+(1<<24|r<<16|g<<8|b).toString(16).slice(1).toUpperCase(); }
 function hexToRgb(hex){
