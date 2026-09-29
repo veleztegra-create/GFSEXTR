@@ -71,6 +71,15 @@ function getSerigraphyAdvice(r,g,b){
   return brightness > manualThreshold || maxColor > 200;
 }
 function rgbToHex(r,g,b){ return '#'+(1<<24|r<<16|g<<8|b).toString(16).slice(1).toUpperCase(); }
+function normalizeHex(hex){
+  const value=String(hex||'').trim().replace(/^#/,'').toUpperCase();
+  return /^([0-9A-F]{6})$/.test(value) ? '#'+value : '';
+}
+function findColorByHex(palette,hex){
+  const normalized=normalizeHex(hex);
+  if(!normalized || !palette) return null;
+  return palette.colors.find(c=>normalizeHex(c.hex)===normalized) || null;
+}
 function hexToRgb(hex){
   const m=hex.replace('#','').match(/.{2}/g); return m ? m.map(v=>parseInt(v,16)) : [0,0,0];
 }
@@ -146,17 +155,28 @@ function exportAcb(){
   catch(e){console.error(e);alert('No se pudo generar el ACB: '+e.message);}
 }
 
+function dedupeColors(colors){
+  const seen=new Set();
+  return colors.reduce((out,c)=>{
+    const hex=normalizeHex(c.hex);
+    if(!hex || seen.has(hex)) return out;
+    seen.add(hex);
+    out.push({...c,id:uid('c_'),hex});
+    return out;
+  },[]);
+}
+
 async function importJsonFile(file){
   try{
     const obj=JSON.parse(await file.text());
     if(obj.format==='GFSEXTR-Backup' && Array.isArray(obj.palettes)){
-      const incoming=obj.palettes.map(p=>({id:uid('pal_'),name:p.name||'Paleta importada',colors:Array.isArray(p.colors)?p.colors.map(c=>({...c,id:uid('c_')})):[]}));
+      const incoming=obj.palettes.map(p=>({id:uid('pal_'),name:p.name||'Paleta importada',colors:Array.isArray(p.colors)?dedupeColors(p.colors):[]}));
       state.palettes.push(...incoming); state.activePaletteId=incoming[0]?.id||state.activePaletteId;
     } else if(Array.isArray(obj.colors)){
-      const p={id:uid('pal_'),name:obj.name||file.name.replace(/\.json$/i,''),colors:obj.colors.map(c=>({...c,id:uid('c_')}))};
+      const p={id:uid('pal_'),name:obj.name||file.name.replace(/\.json$/i,''),colors:dedupeColors(obj.colors)};
       state.palettes.push(p); state.activePaletteId=p.id;
     } else if(Array.isArray(obj)){
-      const p={id:uid('pal_'),name:file.name.replace(/\.json$/i,''),colors:obj.map(c=>({...c,id:uid('c_')}))};
+      const p={id:uid('pal_'),name:file.name.replace(/\.json$/i,''),colors:dedupeColors(obj)};
       state.palettes.push(p); state.activePaletteId=p.id;
     } else throw new Error('JSON no reconocido');
     await persist(); renderPalettes(); renderDatabase();
@@ -220,7 +240,15 @@ imgCanvas.addEventListener('mouseup',async e=>{
   const temp=document.createElement('canvas');temp.width=cropW;temp.height=cropH;temp.getContext('2d').drawImage(imgCanvas,cropX,cropY,cropW,cropH,0,0,cropW,cropH);
   try{
     const result=await Tesseract.recognize(temp.toDataURL(),'eng'),cleanText=result.data.text.trim().replace(/\n/g,' ')||'Sin nombre';
-    const p=activePalette();p.colors.push({id:uid('c_'),hex:pendingColor.hex,colorName:cleanText,underbase:pendingColor.underbase});
+    const p=activePalette();
+    const existingHex=pendingColor.hex;
+    const existing=findColorByHex(p,existingHex);
+    if(existing){
+      pendingColor=null;
+      statusBar.innerHTML='⚠️ <b>'+escapeHtml(existingHex)+'</b> ya existe en <b>'+escapeHtml(p.name)+'</b>. No se duplicó.';
+      return;
+    }
+    p.colors.push({id:uid('c_'),hex:normalizeHex(pendingColor.hex),colorName:cleanText,underbase:pendingColor.underbase});
     await persist();renderPalettes();renderDatabase();pendingColor=null;statusBar.innerHTML='✅ Guardado en <b>'+escapeHtml(p.name)+'</b>. Selecciona el siguiente color.';
   }catch(err){console.error(err);statusBar.innerHTML='❌ Error en OCR.';}
 });
