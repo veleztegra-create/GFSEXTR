@@ -232,6 +232,12 @@ imgCanvas.addEventListener('mouseup',async e=>{
   if(!isDragging||(Math.abs(endX-startX)<5)){
     const x=Math.max(0,Math.min(imgCanvas.width-1,Math.round(startX))),y=Math.max(0,Math.min(imgCanvas.height-1,Math.round(startY)));
     const pixel=ctx.getImageData(x,y,1,1).data,hex=rgbToHex(pixel[0],pixel[1],pixel[2]),needsBase=getSerigraphyAdvice(pixel[0],pixel[1],pixel[2]);
+    const p=activePalette(),existing=findColorByHex(p,hex);
+    if(existing){
+      pendingColor=null;
+      statusBar.innerHTML=`⚠️ <b>${hex}</b> ya existe en esta paleta como <b>${escapeHtml(existing.colorName||'Sin nombre')}</b>. No se duplicará.`;
+      return;
+    }
     pendingColor={hex,underbase:needsBase};statusBar.innerHTML=`🎨 Color: <b>${hex}</b> | Base: <b>${needsBase?'SÍ':'NO'}</b>. Ahora selecciona el texto.`;return;
   }
   if(!pendingColor){alert('Primero selecciona el color con un clic.');return;}
