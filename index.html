@@ -1,64 +1,74 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>GFSEXTR | Tegra Industrial</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f4f4f9; display: flex; flex-direction: column; height: 100vh; }
-        .header { background: #fff; padding: 10px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd; }
-        .main { display: flex; flex: 1; overflow: hidden; padding: 15px; gap: 15px; }
-        
-        .canvas-area { flex: 2; background: #fff; border-radius: 8px; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        #statusBar { padding: 12px; background: #2d3436; color: #00cec9; font-weight: bold; border-radius: 8px 8px 0 0; }
-        .scroll-box { overflow: auto; flex: 1; border: 1px solid #eee; }
-        
-        .editor-area { flex: 1; background: #fff; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .row-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
-        
-        .color-preview { width: 28px; height: 28px; border-radius: 4px; border: 1px solid #ddd; flex-shrink: 0; }
-        .text-input { flex: 1; padding: 8px; border: 1px solid #dfe6e9; border-radius: 4px; font-size: 14px; }
-        .text-input:focus { border-color: #0984e3; outline: none; }
-        
-        .badge { font-size: 11px; padding: 5px 10px; border-radius: 4px; font-weight: bold; }
-        .base-true { background: #ffeaa7; color: #d35400; }
-        .base-false { background: #55efc4; color: #00b894; }
-        
-        .delete-btn { background: #fab1a0; color: #c0392b; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer; font-weight: bold; }
-        .delete-btn:hover { background: #ff7675; color: white; }
-        
-        .download-btn { background: #0984e3; color: white; border: none; width: 100%; padding: 14px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: auto; }
-        .download-btn:hover { background: #074b83; }
-    </style>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GFSEXTR — Color Book Manager</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+<style>
+:root{--red:#b5121b;--dark:#202124;--light:#f4f5f7;--line:#d9dce1;--blue:#0b63ce}
+*{box-sizing:border-box} body{margin:0;font-family:Segoe UI,Tahoma,sans-serif;background:var(--light);color:#202124}
+header{background:#202124;color:white;padding:18px 24px;display:flex;align-items:center;justify-content:space-between}
+header h1{margin:0;font-size:22px} header small{opacity:.75}
+.toolbar{padding:14px 20px;background:white;border-bottom:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button,.file-button{border:0;border-radius:6px;padding:9px 13px;background:#202124;color:white;cursor:pointer;font-weight:600}
+button:hover,.file-button:hover{filter:brightness(1.12)} button.primary{background:var(--red)} button.blue{background:var(--blue)} button.light{background:#eef0f3;color:#202124}
+input,select{font:inherit;border:1px solid #cbd0d6;border-radius:6px;padding:8px;background:white}
+#paletteSelect{min-width:230px}.spacer{flex:1}
+.layout{display:grid;grid-template-columns:minmax(420px,1.3fr) minmax(360px,.9fr);gap:16px;padding:16px}
+.panel{background:white;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.panel h2{font-size:16px;margin:0;padding:13px 15px;border-bottom:1px solid var(--line)}
+.canvas-wrap{overflow:auto;max-height:calc(100vh - 170px);padding:10px}.canvas-wrap canvas{display:block;max-width:none}
+#statusBar{padding:10px 14px;background:#eef1f4;border-bottom:1px solid var(--line);font-size:14px}
+#dataRows{padding:10px;max-height:calc(100vh - 230px);overflow:auto}
+.row-item{display:grid;grid-template-columns:44px 1fr auto auto;gap:9px;align-items:center;padding:9px 4px;border-bottom:1px solid #eee}
+.color-preview{width:40px;height:40px;border:1px solid #555;border-radius:5px}
+.color-name{min-width:0}.color-name input{width:100%}
+.hex{font-family:monospace;font-size:12px;color:#555}.badge{font-size:11px;padding:4px 6px;border-radius:12px;white-space:nowrap}.base-true{background:#fff0f0;color:#a40000}.base-false{background:#edf8ef;color:#176b2c}
+.empty{padding:25px;text-align:center;color:#6d737b}
+.hidden{display:none!important}
+.modal-backdrop{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;z-index:10}
+.modal{background:white;border-radius:10px;padding:20px;width:min(430px,90vw);box-shadow:0 10px 40px #0004}.modal h3{margin-top:0}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.drop-label{display:inline-block}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.canvas-wrap{max-height:50vh}}
+</style>
 </head>
 <body>
-    <div class="header">
-        <h2 style="margin:0; color: #2d3436;">GFSEXTR <span style="font-weight:normal; font-size: 14px;">| Production Tool</span></h2>
-        <input type="file" id="imageUpload" accept="image/*" style="font-size: 14px;">
-    </div>
-    <div class="main">
-        <div class="canvas-area">
-            <div id="statusBar">Sube una especificación para iniciar</div>
-            <div class="scroll-box"><canvas id="imgCanvas"></canvas></div>
-        </div>
-        <div class="editor-area">
-            <h3 style="margin: 0 0 15px 0; color: #636e72;">Colores de la Orden</h3>
-            <div id="dataRows" style="overflow:auto; flex:1; padding-right: 5px;"></div>
-            <div id="dbControls" style="display:none; padding-top: 15px;">
-                <button id="downloadDb" class="download-btn">📥 GUARDAR BASE DE DATOS (.JSON)</button>
-            </div>
-            <div style="background: #f1f2f6; padding: 10px; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid #0984e3;">
-    <label style="font-size: 12px; font-weight: bold; color: #2d3436; display: block; margin-bottom: 5px;">
-        ⚙️ UMBRAL DE BASE (0-255):
-    </label>
-    <div style="display: flex; gap: 10px; align-items: center;">
-        <input type="number" id="palette-light-threshold" class="form-control" min="0" max="255" value="155" 
-               style="width: 70px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
-        <span style="font-size: 11px; color: #636e72;">↑ Claro (SÍ Base) | ↓ Oscuro (NO Base)</span>
-    </div>
+<header><div><h1>GFSEXTR</h1><small>Extractor & Color Book Manager</small></div><div id="saveState">Guardado local</div></header>
+
+<div class="toolbar">
+<label>Paleta:</label>
+<select id="paletteSelect"></select>
+<button id="newPaletteBtn" class="primary">+ Nueva paleta</button>
+<button id="renamePaletteBtn" class="light">Renombrar</button>
+<button id="deletePaletteBtn" class="light">Eliminar</button>
+<span class="spacer"></span>
+<label class="file-button light">Importar JSON<input id="importJson" type="file" accept=".json,application/json" class="hidden"></label>
+<button id="exportJsonBtn" class="blue">JSON</button>
+<button id="exportAcbBtn" class="primary">ACB</button>
+<button id="exportAllBtn" class="light">Backup todas</button>
+<label style="display:flex;align-items:center;gap:6px;margin-left:8px;font-size:13px;">Umbral base <input type="number" id="palette-light-threshold" min="0" max="255" value="155" style="width:70px"></label>
 </div>
-        </div>
-    </div>
-    <script src="app.js"></script>
+
+<div class="layout">
+<section class="panel">
+<h2>01 — Extraer desde imagen</h2>
+<div id="statusBar">Esperando imagen...</div>
+<div class="canvas-wrap"><canvas id="imgCanvas"></canvas></div>
+</section>
+<section class="panel">
+<h2>02 — Colores de la paleta <span id="paletteCount"></span></h2>
+<div id="dataRows"><div class="empty">Crea o selecciona una paleta y captura colores.</div></div>
+</section>
+</div>
+
+<div id="modalBackdrop" class="modal-backdrop hidden">
+<div class="modal">
+<h3 id="modalTitle">Nueva paleta</h3>
+<input id="modalInput" style="width:100%" autocomplete="off">
+<div class="modal-actions"><button id="modalCancel" class="light">Cancelar</button><button id="modalOk" class="primary">Guardar</button></div>
+</div>
+</div>
+<script src="app.js?v=20260929-v2aut"></script>
 </body>
 </html>
